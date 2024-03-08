@@ -13,7 +13,7 @@ Aplicación Backend E-Commerce
 ### Base de datos
 En este caso tenemos 2 opciones:
 
-- Dentro de la carpeta database se encuentra un archivo .sql, el cual puede ser importado desde phpmyadmin como de alguna otra aplicación que se utilice para manejar Bases de Datos relacionales.
+- Dentro de la carpeta database se encuentra un archivo .sql, el cual puede ser importado desde phpmyadmin como de alguna otra aplicación que se utilice para manejar Bases de Datos relacionales. Primero será necesario crear la base de datos, y luego hacer la importación de la misma
 - Otra opción sería crear una base de datos y luego correr las migraciones que se encuentran dentro de la carpeta /database/migrations de la siguiente forma:
 ```
 npx sequelize-cli db:migrate
