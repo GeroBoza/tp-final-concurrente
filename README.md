@@ -7,7 +7,7 @@ Aplicación Backend E-Commerce
 ## Instalación
 
 ```bash
-  cd /tp-final-concurrente.git
+  cd /tp-final-concurrente
   npm install 
 ```
 ### Base de datos
