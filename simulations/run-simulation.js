@@ -1,7 +1,7 @@
 const runSimulation = require("./simulation");
 
 // Puerto donde se ejecuta la aplicación Express
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 8000;
 
 // Número de instancias de simulación con la que se desea ejecutar concurrentemente
 const numInstances = 2;

@@ -31,7 +31,7 @@ async function runSimulation(port) {
 
         try {
             const res = await axios.post(
-                `http://0.0.0.0:${port}/orders/new`,
+                `http://localhost:${port}/orders/new`,
                 data
             );
             console.log(res);
