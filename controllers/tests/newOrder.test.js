@@ -1,91 +1,81 @@
-const {
-    Order,
-    Order_items,
-    Product,
-    sequelize,
-} = require("../../database/models"); // Asegúrate de importar correctamente tus modelos y Sequelize
+const { Product } = require("../../database/models");
 
-const ordersController = require("../ordersController");
+const axios = require("axios");
+const { Op } = require("sequelize");
 
-describe("ordersController.newOrder function", () => {
-    let mockReq, mockRes;
+const API_ENDPOINT = "http://localhost:8000";
 
-    beforeEach(() => {
-        mockReq = {
-            body: {
-                amount: 100, // Define los datos de prueba aquí
-                items: [1, 2, 3], // Define los productos de prueba aquí
-            },
-        };
-        mockRes = {
-            status: jest.fn(() => mockRes),
-            send: jest.fn(),
-        };
-    });
-
-    afterEach(() => {
-        jest.clearAllMocks();
-    });
-
+describe("newOrder", () => {
     it("should create a new order successfully", async () => {
-        const mockTransaction = {};
-        sequelize.transaction.mockResolvedValueOnce(mockTransaction);
-        Order.create.mockResolvedValueOnce({ id: 1 }); // Define el valor de retorno esperado para Order.create
+        const data = { amount: 100, items: [1, 2, 3] }; // Ejemplo de datos para la orden
 
-        Product.findByPk.mockResolvedValueOnce({ id: 1, stock: 10 }); // Define el valor de retorno esperado para Product.findByPk
-
-        await ordersController.newOrder(mockReq, mockRes);
-
-        expect(sequelize.transaction).toHaveBeenCalledTimes(1);
-        expect(Order.create).toHaveBeenCalledTimes(1);
-        expect(Order_items.create).toHaveBeenCalledTimes(
-            mockReq.body.items.length
+        // Se setea el stock de los 3 productos en 10
+        await Product.update(
+            {
+                stock: 10,
+            },
+            {
+                where: {
+                    [Op.or]: [{ id: 1 }, { id: 2 }, { id: 3 }],
+                },
+            }
         );
-        expect(Product.findByPk).toHaveBeenCalledTimes(
-            mockReq.body.items.length
-        );
-        expect(Product.update).toHaveBeenCalledTimes(mockReq.body.items.length);
-        expect(mockRes.status).toHaveBeenCalledWith(200);
-        expect(mockRes.send).toHaveBeenCalledWith({ msg: "Succeed" });
+
+        // Realiza la solicitud al endpoint
+        const response = await axios.post(`${API_ENDPOINT}/orders/new`, data);
+
+        expect(response.status).toBe(200);
+
+        //Se valida que el stock se haya descontado de manera correcta
+        const products = await Product.findAll();
+        console.log(products);
+        expect(parseInt(products[0].stock)).toBe(9);
+        expect(parseInt(products[1].stock)).toBe(9);
+        expect(parseInt(products[2].stock)).toBe(9);
     });
 
     it("should handle error when product is out of stock", async () => {
-        const mockTransaction = {};
-        sequelize.transaction.mockResolvedValueOnce(mockTransaction);
-        Order.create.mockResolvedValueOnce({ id: 1 });
+        const data = { amount: 100, items: [1, 2, 3] };
 
-        Product.findByPk.mockResolvedValueOnce({ id: 1, stock: 0 }); // Define el valor de retorno esperado para un producto fuera de stock
-
-        await ordersController.newOrder(mockReq, mockRes);
-
-        expect(sequelize.transaction).toHaveBeenCalledTimes(1);
-        expect(Order.create).toHaveBeenCalledTimes(1);
-        expect(Order_items.create).not.toHaveBeenCalled();
-        expect(Product.findByPk).toHaveBeenCalledTimes(1);
-        expect(Product.update).not.toHaveBeenCalled();
-        expect(mockRes.status).toHaveBeenCalledWith(500);
-        expect(mockRes.send).toHaveBeenCalledWith({
-            error: new Error("Product out of stock"),
-            msg: "Transaction error",
-        });
-    });
-
-    it("should handle transaction rollback", async () => {
-        sequelize.transaction.mockRejectedValueOnce(
-            new Error("Transaction error")
+        //Se setea el stock en 0
+        await Product.update(
+            {
+                stock: 0,
+            },
+            {
+                where: {
+                    id: 1,
+                },
+            }
         );
 
-        await ordersController.newOrder(mockReq, mockRes);
+        try {
+            // Realiza la solicitud al endpoint
+            await axios.post(`${API_ENDPOINT}/orders/new`, data);
+        } catch (error) {
+            // Captura el error y verifica si es el esperado
+            expect(error.response.status).toBe(500);
+            expect(error.response.data.msg).toBe("Transaction error");
+        }
+    });
 
-        expect(sequelize.transaction).toHaveBeenCalledTimes(1);
-        expect(Order.create).not.toHaveBeenCalled();
-        expect(Order_items.create).not.toHaveBeenCalled();
-        expect(Product.findByPk).not.toHaveBeenCalled();
-        expect(Product.update).not.toHaveBeenCalled();
-        expect(mockRes.status).toHaveBeenCalledWith(500);
-        expect(mockRes.send).toHaveBeenCalledWith({
-            error: new Error("Transaction error"),
-            msg: "Transaction error",
-        });
+    it("should handle error when more than one product are out of stock", async () => {
+        const data = { amount: 100, items: [1, 2, 3] };
+        try {
+            await Product.update(
+                {
+                    stock: 0,
+                },
+                {
+                    where: {
+                        [Op.or]: [{ id: 1 }, { id: 3 }],
+                    },
+                }
+            );
+            await axios.post(`${API_ENDPOINT}/orders/new`, data);
+        } catch (error) {
+            expect(error.response.status).toBe(500);
+            expect(error.response.data.msg).toBe("Transaction error");
+        }
     });
 });
